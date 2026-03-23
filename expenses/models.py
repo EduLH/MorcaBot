@@ -15,12 +15,9 @@ class Expense(models.Model):
         related_name="expenses",
     )
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=100)
-    category_fk = models.ForeignKey(
+    category = models.ForeignKey(
         Category,
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,
         related_name="expenses"
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)

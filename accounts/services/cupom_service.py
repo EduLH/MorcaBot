@@ -17,7 +17,11 @@ def apply_coupon_to_user(user, code: str):
     if CouponRedemption.objects.filter(user=user, coupon=coupon).exists():
         return False, "Cupom já utilizado"
 
-    base_date = user.plan_expires_at or timezone.now()
+    now = timezone.now()
+    if user.plan_expires_at and user.plan_expires_at > now:
+        base_date = user.plan_expires_at
+    else:
+        base_date = now
 
     user.plan_expires_at = base_date + timedelta(days=coupon.duration_days)
     user.save()

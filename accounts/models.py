@@ -24,6 +24,9 @@ class User(AbstractUser):
         return f'{self.name} - {self.phone}'
 
     def has_active_plan(self) -> bool:
+        if not self.is_active_user:
+            return False
+
         if not self.plan_expires_at:
             return False
 

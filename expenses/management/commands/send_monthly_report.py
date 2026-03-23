@@ -1,14 +1,19 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Sum
 from expenses.models import Expense
-from datetime import datetime
+from django.utils import timezone
 from utils.services.money import format_brl
 
 class Command(BaseCommand):
+    help = "Generates monthly expense report grouped by category"
+
     def handle(self, *args, **kwargs):
-        month = datetime.now().month
+        now = timezone.now()
+        month = now.month
+        year = now.year
 
         expenses = Expense.objects.filter(
+            created_at__year=year,
             created_at__month=month
         )
 
@@ -19,14 +24,19 @@ class Command(BaseCommand):
             .order_by("-total")
         )
 
-        report = "📊 Relatório Mensal\n\n"
+        if not summary:
+            self.stdout.write("Nenhum gasto registrado neste mês.")
+            return
+
+        report = f"📊 Relatório Mensal ({month}/{year})\n\n"
 
         total_general = 0
 
         for item in summary:
-            report += f"• {item['category__name']}: {format_brl(item['total'])}\n"
-            total_general += item["total"]
+            val = item["total"]
+            report += f"• {item['category__name']}: {format_brl(val)}\n"
+            total_general += val
 
-        report += f"\nTotal: R$ {total_general}"
+        report += f"\n💰 Total: {format_brl(total_general)}"
 
-        print(report)
+        self.stdout.write(report)
