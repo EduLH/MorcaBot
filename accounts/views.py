@@ -4,17 +4,19 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import timedelta
 
-from accounts.services.cupom_service import apply_coupon_to_user
+from accounts.services.user_service import create_user_with_optional_coupon
+
 
 User = get_user_model()
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def create_user(request):
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"error": "invalid json"}, status=400)
 
     phone = data.get("phone")
     name = data.get("name")
@@ -23,28 +25,15 @@ def create_user(request):
     if not phone:
         return JsonResponse({"error": "phone required"}, status=400)
 
-    user, created = User.objects.get_or_create(
+    user, success, message = create_user_with_optional_coupon(
         phone=phone,
-        defaults={"name": name or ""}
+        name=name,
+        coupon_code=coupon_code
     )
 
-    # aplica trial padrão
-    if created:
-        user.plan_expires_at = timezone.now() + timedelta(days=7)
-        user.save()
-
-    # aplica cupom
-    if coupon_code:
-        success, message = apply_coupon_to_user(user, coupon_code)
-
-        return JsonResponse({
-            "status": "ok" if success else "error",
-            "message": message
-        })
-
     return JsonResponse({
-        "status": "ok",
-        "message": "Usuário criado"
+        "status": "ok" if success else "error",
+        "message": message
     })
 
 
