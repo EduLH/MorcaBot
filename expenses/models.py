@@ -1,6 +1,13 @@
 from django.conf import settings
 from django.db import models
 
+
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
 class Expense(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -9,6 +16,13 @@ class Expense(models.Model):
     )
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=100)
+    category_fk = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="expenses"
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
 

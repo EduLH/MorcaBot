@@ -1,21 +1,27 @@
+import re
+from utils.services.money import normalize_brl_amount
+
+SEPARATORS = r"\s*(?:-|/|\*|,)\s*"
+
+
 def parse_message(text: str):
     if not text:
         return None
 
-    parts = [p.strip() for p in text.split("-")]
+    parts = re.split(SEPARATORS, text)
 
     if len(parts) != 3:
         return None
 
-    name, category, raw_amount = parts
+    name, category, raw_amount = [p.strip() for p in parts]
 
     try:
-        amount = float(raw_amount.replace(",", "."))
+        amount = normalize_brl_amount(raw_amount)
     except ValueError:
         return None
 
     return {
         "name": name,
-        "category": category,
+        "category": category.lower(),
         "amount": amount,
     }

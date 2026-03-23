@@ -2,12 +2,8 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth import get_user_model
 
-from .models import Expense
-from .parser import parse_message
-
-User = get_user_model()
+from expenses.services.message_service import process_incoming_message
 
 
 @csrf_exempt
@@ -24,18 +20,6 @@ def webhook(request):
     if not message or not phone:
         return JsonResponse({"error": "missing fields"}, status=400)
 
-    user, _ = User.objects.get_or_create(phone=phone)
+    result = process_incoming_message(phone, message)
 
-    parsed = parse_message(message)
-
-    if not parsed:
-        return JsonResponse({"error": "Formato inválido"}, status=400)
-
-    Expense.objects.create(
-        user=user,
-        name=parsed["name"],
-        category=parsed["category"],
-        amount=parsed["amount"],
-    )
-
-    return JsonResponse({"status": "ok"}, status=200)
+    return JsonResponse(result, status=200)

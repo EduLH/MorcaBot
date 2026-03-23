@@ -4,35 +4,48 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
+
+from accounts.services.cupom_service import apply_coupon_to_user
 
 User = get_user_model()
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def create_user(request):
-    try:
-        data = json.loads(request.body)
-        user = User.objects.create(
-            phone=data["phone"],
-            first_name=data.get("first_name", ""),
-            last_name=data.get("last_name", ""),
-            email=data.get("email", ""),
-        )
-        return JsonResponse(
-            {
-                "id": str(user.id),
-                "phone": user.phone,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-            },
-            status=201,
-        )
-    except KeyError:
-        return JsonResponse({"error": "Missing fields"}, status=400)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    data = json.loads(request.body)
+
+    phone = data.get("phone")
+    name = data.get("name")
+    coupon_code = data.get("coupon")
+
+    if not phone:
+        return JsonResponse({"error": "phone required"}, status=400)
+
+    user, created = User.objects.get_or_create(
+        phone=phone,
+        defaults={"name": name or ""}
+    )
+
+    # aplica trial padrão
+    if created:
+        user.plan_expires_at = timezone.now() + timedelta(days=7)
+        user.save()
+
+    # aplica cupom
+    if coupon_code:
+        success, message = apply_coupon_to_user(user, coupon_code)
+
+        return JsonResponse({
+            "status": "ok" if success else "error",
+            "message": message
+        })
+
+    return JsonResponse({
+        "status": "ok",
+        "message": "Usuário criado"
+    })
 
 
 @require_http_methods(["GET"])
